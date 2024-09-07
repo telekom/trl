@@ -1168,8 +1168,6 @@ class BCOTrainer(Trainer):
             policy_chosen_logits,
             policy_rejected_logits,
         ) = forward_output[:4]
-        if self.aux_loss_enabled:
-            aux_loss = forward_output[4]
 
         # if reference_logps in batch use them, otherwise use the reference model
         if "reference_logps" in batch:
@@ -1226,6 +1224,8 @@ class BCOTrainer(Trainer):
 
         loss = losses.nanmean()
         if self.aux_loss_enabled:
+            aux_loss = forward_output[4]
+            metrics["aux_loss"] = aux_loss
             loss += getattr(model.config, "router_aux_loss_coef", 0.0) * aux_loss
 
         return loss, metrics
