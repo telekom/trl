@@ -1135,9 +1135,9 @@ class KTOTrainer(Trainer):
         self,
         model,
         batch: Dict[str, Union[List, torch.LongTensor]],
-    ):
+    ) -> Tuple[torch.Tensor, Dict[str, Union[int, float]]]:
         """Compute the KTO loss and other metrics for the given batch of inputs for train or test."""
-        metrics = {}
+        metrics: Dict[str, Union[int, float]] = {}
         batch = {k: (v.to(self.accelerator.device) if isinstance(v, torch.Tensor) else v) for k, v in batch.items()}
 
         forward_output = self.forward(model, batch)
@@ -1148,8 +1148,6 @@ class KTOTrainer(Trainer):
             policy_rejected_logits,
             policy_KL_logps,
         ) = forward_output[:5]
-        if self.aux_loss_enabled:
-            aux_loss = forward_output[5]
 
         # if reference_logps in batch use them, otherwise use the reference model
         if "reference_logps" in batch:
@@ -1216,6 +1214,8 @@ class KTOTrainer(Trainer):
 
         loss = losses.nanmean()
         if self.aux_loss_enabled:
+            aux_loss = forward_output[5]
+            metrics["aux_loss"] = aux_loss
             loss += getattr(model.config, "router_aux_loss_coef", 0.0) * aux_loss
 
         return loss, metrics
@@ -1225,7 +1225,7 @@ class KTOTrainer(Trainer):
         model: Union[PreTrainedModel, nn.Module],
         inputs: Dict[str, Union[torch.Tensor, Any]],
         return_outputs=False,
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, torch.Tensor]]]:
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, Union[int, float]]]]:
         if not self.use_dpo_data_collator:
             warnings.warn(
                 "compute_loss is only implemented for DPODataCollatorWithPadding, and you passed a datacollator that is different than "
